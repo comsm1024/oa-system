@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Layout, Menu, Button, Space, message, Modal, Form, Input, Select } from 'antd';
+import { Card, Layout, Menu, Button, Space, message, Modal, Form, Input, Select, Steps } from 'antd';
 import {
   SaveOutlined,
   ImportOutlined,
@@ -9,48 +9,26 @@ import {
   ZoomInOutlined,
   ZoomOutOutlined,
   OneToOneOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons';
 import LogicFlow from '@logicflow/core';
 import { DndPanel, SelectionSelect, Control, MiniMap } from '@logicflow/extension';
-import '@logicflow/core/dist/style/index.css';
+import { nodeDefinitions } from './nodes';
+import '@logicflow/core/dist/index.css';
 import '@logicflow/extension/lib/style/index.css';
 import './index.css';
+import type { DndPanel as DndPanelType } from '@logicflow/extension';
 
 const { Sider, Content } = Layout;
 const { Option } = Select;
 
 // 节点类型定义
 const nodeTypes = [
-  {
-    type: 'start',
-    label: '开始节点',
-    icon: '🟢',
-    properties: ['name'],
-  },
-  {
-    type: 'approval',
-    label: '审批节点',
-    icon: '👤',
-    properties: ['name', 'assignee', 'dueDate'],
-  },
-  {
-    type: 'condition',
-    label: '条件节点',
-    icon: '❓',
-    properties: ['name', 'condition'],
-  },
-  {
-    type: 'parallel',
-    label: '并行节点',
-    icon: '⫲',
-    properties: ['name'],
-  },
-  {
-    type: 'end',
-    label: '结束节点',
-    icon: '⬤',
-    properties: ['name'],
-  },
+  { type: 'start', label: '开始节点', icon: '⭕' },
+  { type: 'approval', label: '审批节点', icon: '📝' },
+  { type: 'condition', label: '条件节点', icon: '❓' },
+  { type: 'parallel', label: '并行节点', icon: '⚡' },
+  { type: 'end', label: '结束节点', icon: '🔚' },
 ];
 
 interface ProcessDesignerProps {
@@ -58,31 +36,86 @@ interface ProcessDesignerProps {
   onSave?: (data: any) => void;
 }
 
+interface GraphNode {
+  id: string;
+  type: string;
+  properties?: {
+    name?: string;
+    [key: string]: any;
+  };
+}
+
+interface GraphEdge {
+  id: string;
+  sourceNodeId: string;
+  targetNodeId: string;
+  type: string;
+  properties?: Record<string, any>;
+}
+
+interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+interface SimulationStep {
+  node: GraphNode;
+  status: 'wait' | 'process' | 'finish' | 'error';
+  title: string;
+  description: string;
+}
+
 const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave }) => {
   const [lf, setLf] = useState<LogicFlow>();
   const [nodeModalVisible, setNodeModalVisible] = useState(false);
   const [currentNode, setCurrentNode] = useState<any>(null);
   const [nodeForm] = Form.useForm();
+  const [simulationVisible, setSimulationVisible] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [simulationPath, setSimulationPath] = useState<any[]>([]);
 
   // 初始化流程设计器
   useEffect(() => {
+    // 初始化 LogicFlow
+    LogicFlow.use(DndPanel);
+    LogicFlow.use(SelectionSelect);
+    LogicFlow.use(Control);
+    LogicFlow.use(MiniMap);
+
     const logicflow = new LogicFlow({
       container: document.querySelector('#process-designer') as HTMLElement,
       grid: true,
-      plugins: [DndPanel, SelectionSelect, Control, MiniMap],
+      nodeTextEdit: true,
+      nodeTextDraggable: true,
+      adjustEdge: true,
+      adjustNodePosition: true,
+      dragOnConnecting: true,
+      style: {
+        rect: {
+          radius: 5,
+          strokeWidth: 2,
+        },
+        circle: {
+          r: 25,
+          strokeWidth: 2,
+        },
+        nodeText: {
+          overflowMode: 'autoWrap',
+          fontSize: 12,
+        },
+        edgeText: {
+          textWidth: 100,
+          fontSize: 12,
+          background: {
+            fill: '#fff',
+          },
+        },
+      },
     });
 
     // 注册自定义节点
-    nodeTypes.forEach(node => {
-      logicflow.register({
-        type: node.type,
-        view: {
-          // 自定义节点样式
-        },
-        model: {
-          // 自定义节点行为
-        },
-      });
+    Object.values(nodeDefinitions).forEach(node => {
+      logicflow.register(node);
     });
 
     // 监听节点点击事件
@@ -90,6 +123,19 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
       setCurrentNode(data);
       nodeForm.setFieldsValue(data.properties);
       setNodeModalVisible(true);
+    });
+
+    // 添加拖拽相关事件监听
+    logicflow.on('node:dragstart', () => {
+      logicflow.updateEditConfig({ stopMoveGraph: true });
+    });
+
+    logicflow.on('node:dragend', () => {
+      logicflow.updateEditConfig({ stopMoveGraph: false });
+    });
+
+    logicflow.on('connection:not-allowed', (data: any) => {
+      message.error('无法建立此连接');
     });
 
     setLf(logicflow);
@@ -153,16 +199,117 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
     nodeForm.resetFields();
   };
 
+  // 开始模拟运行
+  const handleStartSimulation = () => {
+    if (!lf) return;
+    const data = lf.getGraphData() as GraphData;
+    
+    // 查找开始节点
+    const startNode = data.nodes.find(node => node.type === 'start');
+    if (!startNode) {
+      message.error('流程中必须包含开始节点');
+      return;
+    }
+
+    // 初始化模拟路径
+    setSimulationPath([{
+      node: startNode,
+      status: 'process',
+      title: '开始节点',
+      description: '流程开始'
+    }]);
+    setCurrentStep(0);
+    setSimulationVisible(true);
+  };
+
+  // 处理节点选择
+  const handleNodeSelect = (nodeId: string) => {
+    if (!lf) return;
+    const data = lf.getGraphData() as GraphData;
+    
+    // 获取当前节点的出边
+    const edges = data.edges.filter(edge => edge.sourceNodeId === nodeId);
+    const currentNode = data.nodes.find(node => node.id === nodeId);
+    
+    if (!currentNode) return;
+    
+    // 如果是结束节点，完成模拟
+    if (currentNode.type === 'end') {
+      setSimulationPath(prev => [
+        ...prev,
+        {
+          node: currentNode,
+          status: 'finish',
+          title: '结束节点',
+          description: '流程结束'
+        }
+      ]);
+      message.success('流程模拟完成');
+      return;
+    }
+    
+    // 如果有多个出边（条件或并行），显示选择对话框
+    if (edges.length > 1) {
+      Modal.confirm({
+        title: '选择下一步',
+        content: (
+          <Select
+            style={{ width: '100%' }}
+            onChange={(value) => {
+              const nextNode = data.nodes.find(node => node.id === value);
+              if (nextNode) {
+                setSimulationPath(prev => [
+                  ...prev,
+                  {
+                    node: nextNode,
+                    status: 'process',
+                    title: nextNode.properties?.name || nextNode.type,
+                    description: `执行${nextNode.type === 'condition' ? '条件判断' : '节点任务'}`
+                  }
+                ]);
+                setCurrentStep(prev => prev + 1);
+              }
+            }}
+          >
+            {edges.map(edge => {
+              const targetNode = data.nodes.find(node => node.id === edge.targetNodeId);
+              return (
+                <Select.Option key={targetNode?.id} value={targetNode?.id}>
+                  {targetNode?.properties?.name || targetNode?.type}
+                </Select.Option>
+              );
+            })}
+          </Select>
+        ),
+      });
+    } else if (edges.length === 1) {
+      // 如果只有一个出边，直接进入下一节点
+      const nextNode = data.nodes.find(node => node.id === edges[0].targetNodeId);
+      if (nextNode) {
+        setSimulationPath(prev => [
+          ...prev,
+          {
+            node: nextNode,
+            status: 'process',
+            title: nextNode.properties?.name || nextNode.type,
+            description: `执行${nextNode.type === 'condition' ? '条件判断' : '节点任务'}`
+          }
+        ]);
+        setCurrentStep(prev => prev + 1);
+      }
+    }
+  };
+
   return (
-    <Layout style={{ height: 'calc(100vh - 200px)' }}>
+    <Layout className="process-designer-container">
       <Sider width={200} theme="light">
-        <div className="dnd-panel">
+        <div className="lf-dnd-panel">
           <h3>流程节点</h3>
           {nodeTypes.map(node => (
             <div
               key={node.type}
-              className="dnd-node"
-              data-node-type={node.type}
+              className="lf-dnd-item"
+              data-type={node.type}
             >
               <span className="node-icon">{node.icon}</span>
               <span>{node.label}</span>
@@ -170,9 +317,10 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
           ))}
         </div>
       </Sider>
-      <Layout>
+      <Layout className='process-designer-content'>
         <Card
           bodyStyle={{ padding: '8px 16px' }}
+          style={{ marginBottom: '8px' }}
           extra={
             <Space>
               <Button icon={<UndoOutlined />} onClick={handleUndo} />
@@ -182,14 +330,17 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
               <Button icon={<OneToOneOutlined />} onClick={handleResetZoom} />
               <Button icon={<ImportOutlined />} onClick={handleImport} />
               <Button icon={<ExportOutlined />} onClick={handleExport} />
+              <Button icon={<PlayCircleOutlined />} onClick={handleStartSimulation}>
+                模拟运行
+              </Button>
               <Button type="primary" icon={<SaveOutlined />} onClick={handleSave}>
                 保存
               </Button>
             </Space>
           }
         />
-        <Content>
-          <div id="process-designer" style={{ height: '100%' }} />
+        <Content style={{ flex: 1, position: 'relative' }}>
+          <div id="process-designer" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
         </Content>
       </Layout>
 
@@ -198,6 +349,7 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
         open={nodeModalVisible}
         onOk={() => nodeForm.submit()}
         onCancel={() => setNodeModalVisible(false)}
+        className="process-designer-modal"
       >
         <Form
           form={nodeForm}
@@ -244,6 +396,31 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
             </Form.Item>
           )}
         </Form>
+      </Modal>
+
+      {/* 模拟运行对话框 */}
+      <Modal
+        title="流程模拟运行"
+        open={simulationVisible}
+        onCancel={() => setSimulationVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setSimulationVisible(false)}>
+            关闭
+          </Button>
+        ]}
+        width={600}
+        className="process-designer-modal"
+      >
+        <Steps
+          direction="vertical"
+          current={currentStep}
+          items={simulationPath.map((item, index) => ({
+            title: item.title,
+            description: item.description,
+            status: item.status,
+            onClick: () => handleNodeSelect(item.node.id)
+          }))}
+        />
       </Modal>
     </Layout>
   );

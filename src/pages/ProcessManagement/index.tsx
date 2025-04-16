@@ -204,9 +204,9 @@ const ProcessManagement = () => {
       width: 100,
       render: (status: string) => {
         const statusConfig = {
-          running: { color: 'processing', text: '运行中' },
-          completed: { color: 'success', text: '已完成' },
-          terminated: { color: 'error', text: '已终止' },
+          running: { color: 'processing' as const, text: '运行中' },
+          completed: { color: 'success' as const, text: '已完成' },
+          terminated: { color: 'error' as const, text: '已终止' },
         };
         const config = statusConfig[status as keyof typeof statusConfig];
         return <Badge status={config.color} text={config.text} />;
@@ -304,9 +304,9 @@ const ProcessManagement = () => {
       width: 100,
       render: (status: string) => {
         const statusConfig = {
-          pending: { color: 'processing', text: '处理中' },
-          completed: { color: 'success', text: '已完成' },
-          canceled: { color: 'error', text: '已取消' },
+          pending: { color: 'processing' as const, text: '处理中' },
+          completed: { color: 'success' as const, text: '已完成' },
+          canceled: { color: 'error' as const, text: '已取消' },
         };
         const config = statusConfig[status as keyof typeof statusConfig];
         return <Badge status={config.color} text={config.text} />;

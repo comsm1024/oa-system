@@ -1,24 +1,46 @@
-.dnd-panel {
+.process-designer-container.ant-layout {
+  min-height: auto !important;
+  height: calc(100vh - 180px) !important;
+  overflow: hidden;
+}
+
+.process-designer-content.ant-layout {
+  min-height: auto !important;
+  height: 100% !important;
+  overflow: hidden;
+}
+
+/* LogicFlow DndPanel 样式 */
+.lf-dnd-panel {
   padding: 16px;
+  user-select: none;
 }
 
-.dnd-panel h3 {
-  font-size: 16px;
+.lf-dnd-panel h3 {
   margin-bottom: 16px;
+  font-size: 16px;
+  font-weight: 500;
 }
 
-.dnd-node {
+.lf-dnd-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lf-dnd-item {
   display: flex;
   align-items: center;
   padding: 8px 16px;
-  margin-bottom: 8px;
   border: 1px solid #d9d9d9;
   border-radius: 4px;
   cursor: move;
   transition: all 0.3s;
+  background: #fff;
+  user-select: none;
 }
 
-.dnd-node:hover {
+.lf-dnd-item:hover {
   border-color: #1890ff;
   background-color: #f0f5ff;
 }
@@ -57,6 +79,18 @@
   border-color: #722ed1;
 }
 
+/* 拖拽时的样式 */
+.lf-drag-able {
+  cursor: move;
+  user-select: none;
+}
+
+.lf-drag-ing {
+  cursor: grabbing;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
 /* 连线样式 */
 .lf-edge {
   stroke: #666;
@@ -93,4 +127,22 @@
 .lf-mini-map {
   background-color: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 覆盖 Modal 样式 */
+.process-designer-modal {
+  top: 20px;
+}
+
+.process-designer-modal .ant-modal-content {
+  max-height: calc(100vh - 40px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.process-designer-modal .ant-modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
 } 
