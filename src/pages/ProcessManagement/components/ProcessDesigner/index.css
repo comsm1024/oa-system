@@ -1,0 +1,96 @@
+.dnd-panel {
+  padding: 16px;
+}
+
+.dnd-panel h3 {
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+.dnd-node {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  margin-bottom: 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  cursor: move;
+  transition: all 0.3s;
+}
+
+.dnd-node:hover {
+  border-color: #1890ff;
+  background-color: #f0f5ff;
+}
+
+.node-icon {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+/* 自定义节点样式 */
+.lf-node-start {
+  background-color: #e6f7ff;
+  border-color: #1890ff;
+  border-radius: 50%;
+}
+
+.lf-node-end {
+  background-color: #fff1f0;
+  border-color: #ff4d4f;
+  border-radius: 50%;
+}
+
+.lf-node-approval {
+  background-color: #f6ffed;
+  border-color: #52c41a;
+}
+
+.lf-node-condition {
+  background-color: #fff7e6;
+  border-color: #faad14;
+  border-radius: 4px;
+}
+
+.lf-node-parallel {
+  background-color: #f9f0ff;
+  border-color: #722ed1;
+}
+
+/* 连线样式 */
+.lf-edge {
+  stroke: #666;
+  stroke-width: 2;
+}
+
+.lf-edge:hover {
+  stroke: #1890ff;
+}
+
+/* 选中状态 */
+.lf-node-selected {
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* 连接点样式 */
+.lf-anchor {
+  stroke: #666;
+  fill: #fff;
+}
+
+.lf-anchor:hover {
+  stroke: #1890ff;
+  fill: #e6f7ff;
+}
+
+/* 缩放控制器样式 */
+.lf-control {
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 小地图样式 */
+.lf-mini-map {
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+} 
