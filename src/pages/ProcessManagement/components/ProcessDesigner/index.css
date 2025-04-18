@@ -10,25 +10,40 @@
   overflow: hidden;
 }
 
-/* LogicFlow DndPanel 样式 */
-.lf-dnd-panel {
-  padding: 16px;
-  user-select: none;
+/* 覆盖 Card 组件的默认样式 */
+.process-designer-content .ant-card {
+  height: auto !important;
+  margin-bottom: 8px;
 }
 
-.lf-dnd-panel h3 {
-  margin-bottom: 16px;
+.process-designer-content .ant-card-body {
+  padding: 8px 16px;
+}
+
+/* LogicFlow DndPanel 样式 */
+.lf-dnd-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.lf-dnd-header {
+  position: relative;
   font-size: 16px;
   font-weight: 500;
+  margin-bottom: 16px;
 }
 
-.lf-dnd-container {
+.lf-dnd-content {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.lf-dnd-item {
+.lf-node-panel-item {
   display: flex;
   align-items: center;
   padding: 8px 16px;
@@ -40,12 +55,12 @@
   user-select: none;
 }
 
-.lf-dnd-item:hover {
+.lf-node-panel-item:hover {
   border-color: #1890ff;
   background-color: #f0f5ff;
 }
 
-.node-icon {
+.lf-node-panel-item-icon {
   margin-right: 8px;
   font-size: 16px;
 }
@@ -71,7 +86,6 @@
 .lf-node-condition {
   background-color: #fff7e6;
   border-color: #faad14;
-  border-radius: 4px;
 }
 
 .lf-node-parallel {
@@ -80,15 +94,15 @@
 }
 
 /* 拖拽时的样式 */
-.lf-drag-able {
-  cursor: move;
-  user-select: none;
-}
-
-.lf-drag-ing {
-  cursor: grabbing;
+.lf-dragging {
+  cursor: grabbing !important;
   opacity: 0.8;
   pointer-events: none;
+}
+
+.lf-drag-handler {
+  cursor: move;
+  user-select: none;
 }
 
 /* 连线样式 */

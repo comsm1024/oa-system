@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Card, Layout, Menu, Button, Space, message, Modal, Form, Input, Select, Steps } from 'antd';
 import {
   SaveOutlined,
@@ -66,6 +66,7 @@ interface SimulationStep {
 }
 
 const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [lf, setLf] = useState<LogicFlow>();
   const [nodeModalVisible, setNodeModalVisible] = useState(false);
   const [currentNode, setCurrentNode] = useState<any>(null);
@@ -76,20 +77,50 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
 
   // 初始化流程设计器
   useEffect(() => {
-    // 初始化 LogicFlow
-    LogicFlow.use(DndPanel);
-    LogicFlow.use(SelectionSelect);
-    LogicFlow.use(Control);
-    LogicFlow.use(MiniMap);
+    if (!containerRef.current) return;
 
     const logicflow = new LogicFlow({
-      container: document.querySelector('#process-designer') as HTMLElement,
+      container: containerRef.current,
       grid: true,
+      plugins: [DndPanel, SelectionSelect, Control, MiniMap],
       nodeTextEdit: true,
       nodeTextDraggable: true,
       adjustEdge: true,
       adjustNodePosition: true,
       dragOnConnecting: true,
+      pluginsOptions: {
+        dndPanel: {
+          containerClassName: 'lf-dnd-container',
+          itemClassName: 'lf-dnd-item',
+          patternItems: [
+            {
+              type: 'start',
+              text: '开始节点',
+              icon: '⭕',
+            },
+            {
+              type: 'approval',
+              text: '审批节点',
+              icon: '📝',
+            },
+            {
+              type: 'condition',
+              text: '条件节点',
+              icon: '❓',
+            },
+            {
+              type: 'parallel',
+              text: '并行节点',
+              icon: '⚡',
+            },
+            {
+              type: 'end',
+              text: '结束节点',
+              icon: '🔚',
+            },
+          ]
+        }
+      },
       style: {
         rect: {
           radius: 5,
@@ -113,10 +144,21 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
       },
     });
 
+    console.log('LogicFlow 已初始化');
+
     // 注册自定义节点
     Object.values(nodeDefinitions).forEach(node => {
+      console.log(`注册节点 ${node.type}`);
       logicflow.register(node);
     });
+
+    // 设置画布默认配置
+    logicflow.setDefaultEdgeType('polyline');
+    
+    console.log('已设置默认边类型为polyline');
+    
+    // 渲染画布
+    logicflow.render({});
 
     // 监听节点点击事件
     logicflow.on('node:click', ({ data }) => {
@@ -203,6 +245,7 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
   const handleStartSimulation = () => {
     if (!lf) return;
     const data = lf.getGraphData() as GraphData;
+    console.log(data);
     
     // 查找开始节点
     const startNode = data.nodes.find(node => node.type === 'start');
@@ -303,18 +346,9 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
   return (
     <Layout className="process-designer-container">
       <Sider width={200} theme="light">
-        <div className="lf-dnd-panel">
-          <h3>流程节点</h3>
-          {nodeTypes.map(node => (
-            <div
-              key={node.type}
-              className="lf-dnd-item"
-              data-type={node.type}
-            >
-              <span className="node-icon">{node.icon}</span>
-              <span>{node.label}</span>
-            </div>
-          ))}
+        <div>
+          <div style={{ padding: '16px', fontWeight: 'bold', fontSize: '16px' }}>流程节点</div>
+          <div className="lf-dnd-container" style={{ height: 'calc(100vh - 220px)', padding: '0 16px 16px 16px', overflowY: 'auto' }} />
         </div>
       </Sider>
       <Layout className='process-designer-content'>
@@ -339,8 +373,19 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
             </Space>
           }
         />
-        <Content style={{ flex: 1, position: 'relative' }}>
-          <div id="process-designer" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+        <Content style={{ flex: 1, position: 'relative', height: 'calc(100vh - 120px)', overflow: 'hidden' }}>
+          <div 
+            ref={containerRef} 
+            style={{ 
+              width: '100%', 
+              height: '100%',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0
+            }}
+          />
         </Content>
       </Layout>
 
