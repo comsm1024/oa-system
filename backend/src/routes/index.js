@@ -6,11 +6,15 @@ const communicationRoutes = require('./communicationRoutes');
 const reportRoutes = require('./reportRoutes');
 const processRoutes = require('./processRoutes');
 const dailyRoutes = require('./dailyRoutes');
+const authRoutes = require('./authRoutes');
 
 // 测试路由
 router.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
+
+// 认证路由
+router.use('/auth', authRoutes);
 
 // 用户路由
 router.use('/', userRoutes);
