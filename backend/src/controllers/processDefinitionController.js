@@ -86,6 +86,7 @@ const processDefinitionController = {
 
   // 创建流程
   async createProcess(req, res) {
+    console.log('createProcess', req.body);
     try {
       const { name, description, steps } = req.body;
       const created_by = req.user.id; // 假设通过认证中间件设置了req.user
