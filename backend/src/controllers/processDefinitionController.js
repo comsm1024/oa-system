@@ -9,7 +9,7 @@ const processDefinitionController = {
       const offset = (page - 1) * pageSize;
       
       let query = `
-        SELECT p.*, u.username as createdBy
+        SELECT p.*, u.username as created_by
         FROM process_definitions p
         LEFT JOIN users u ON p.created_by = u.id
         WHERE 1=1
@@ -28,7 +28,7 @@ const processDefinitionController = {
 
       // 获取总数
       const [countResult] = await db.query(
-        query.replace('SELECT p.*, u.username as createdBy', 'SELECT COUNT(*) as total'),
+        query.replace('SELECT p.*, u.username as created_by', 'SELECT COUNT(*) as total'),
         params
       );
       const total = countResult[0].total;
@@ -55,7 +55,7 @@ const processDefinitionController = {
   async getProcessDetail(req, res) {
     try {
       const [process] = await db.query(`
-        SELECT p.*, u.username as createdBy
+        SELECT p.*, u.username as created_by
         FROM process_definitions p
         LEFT JOIN users u ON p.created_by = u.id
         WHERE p.id = ?

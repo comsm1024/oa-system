@@ -3,6 +3,7 @@ import { Table, Card, Button, Space, Tag, Input, Select, message, Popconfirm, Mo
 import { PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined, PauseCircleOutlined, InboxOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { processService, Process, ProcessListParams, ProcessStep, ProcessCreateParams } from '../../../../services/processService';
 import { useNavigate } from 'react-router-dom';
+import ProcessForm from '../ProcessForm';
 
 const { Option } = Select;
 
@@ -21,6 +22,8 @@ const ProcessList: React.FC = () => {
   const [createForm] = Form.useForm();
   const [createLoading, setCreateLoading] = useState(false);
   const [steps, setSteps] = useState<Omit<ProcessStep, 'id'>[]>([]);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [currentProcess, setCurrentProcess] = useState<Process | null>(null);
 
   // 获取流程列表
   const fetchProcessList = async () => {
@@ -113,8 +116,9 @@ const ProcessList: React.FC = () => {
   };
 
   // 处理编辑流程
-  const handleEdit = (id: number) => {
-    navigate(`/process/edit/${id}`);
+  const handleEdit = (process: Process) => {
+    setCurrentProcess(process);
+    setEditModalVisible(true);
   };
 
   // 处理创建流程
@@ -218,6 +222,20 @@ const ProcessList: React.FC = () => {
     setSteps(newSteps);
   };
 
+  // 处理编辑提交
+  const handleEditSubmit = async (values: any) => {
+    if (!currentProcess) return;
+    
+    try {
+      await processService.updateProcess(currentProcess.id, values);
+      message.success('更新成功');
+      setEditModalVisible(false);
+      fetchProcessList();
+    } catch (error) {
+      // 错误已在请求拦截器中处理
+    }
+  };
+
   // 表格列定义
   const columns = [
     {
@@ -250,13 +268,13 @@ const ProcessList: React.FC = () => {
     },
     {
       title: '创建人',
-      dataIndex: 'createdBy',
-      key: 'createdBy',
+      dataIndex: 'created_by',
+      key: 'created_by',
     },
     {
       title: '创建时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
+      dataIndex: 'created_at',
+      key: 'created_at',
       render: (text: string) => new Date(text).toLocaleString(),
     },
     {
@@ -267,7 +285,7 @@ const ProcessList: React.FC = () => {
           <Button 
             type="link" 
             icon={<EditOutlined />} 
-            onClick={() => handleEdit(record.id)}
+            onClick={() => handleEdit(record)}
           >
             编辑
           </Button>
@@ -497,6 +515,23 @@ const ProcessList: React.FC = () => {
             </Button>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 编辑弹窗 */}
+      <Modal
+        title="编辑流程"
+        open={editModalVisible}
+        onCancel={() => setEditModalVisible(false)}
+        footer={null}
+        width={800}
+      >
+        {currentProcess && (
+          <ProcessForm
+            initialValues={currentProcess}
+            onSubmit={handleEditSubmit}
+            onCancel={() => setEditModalVisible(false)}
+          />
+        )}
       </Modal>
     </Card>
   );
