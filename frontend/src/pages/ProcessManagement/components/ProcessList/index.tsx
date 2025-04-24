@@ -385,6 +385,7 @@ const ProcessList: React.FC = () => {
           showTotal: (total) => `共 ${total} 条记录`,
         }}
         onChange={handleTableChange}
+        scroll={{ x: 'max-content' }}
       />
 
       {/* 创建流程模态框 */}
