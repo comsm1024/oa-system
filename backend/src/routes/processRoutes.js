@@ -1,17 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const processController = require('../controllers/processController');
 const processDefinitionController = require('../controllers/processDefinitionController');
 const processInstanceController = require('../controllers/processInstanceController');
 const authMiddleware = require('../middleware/authMiddleware');
-
-// 流程管理路由
-router.get('/processes', processController.getProcesses);
-router.get('/processes/:id', processController.getProcessById);
-router.post('/processes', authMiddleware, processController.createProcess);
-router.put('/processes/:id', authMiddleware, processController.updateProcess);
-router.put('/processes/:id/status', authMiddleware, processController.updateProcessStatus);
-router.delete('/processes/:id', authMiddleware, processController.deleteProcess);
 
 // 流程定义路由
 router.get('/process/list', processDefinitionController.getProcessList);
