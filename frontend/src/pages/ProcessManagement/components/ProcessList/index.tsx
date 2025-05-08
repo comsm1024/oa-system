@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Space, Tag, Input, Select, message, Popconfirm, Modal } from 'antd';
-import { PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined, PauseCircleOutlined, InboxOutlined } from '@ant-design/icons';
+import { Table, Card, Button, Space, Tag, Input, Select, message, Popconfirm, Modal, Dropdown } from 'antd';
+import { PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined, PauseCircleOutlined, InboxOutlined, MoreOutlined } from '@ant-design/icons';
 import { processService, Process, ProcessListParams } from '../../../../services/processService';
 import { useNavigate } from 'react-router-dom';
 import ProcessForm from '../ProcessForm';
@@ -199,62 +199,63 @@ const ProcessList: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      render: (_: any, record: Process) => (
-        <Space size="middle">
-          <Button 
-            type="link" 
-            icon={<EditOutlined />} 
-            onClick={() => handleEdit(record)}
-          >
-            编辑
-          </Button>
-          
-          {record.status === 'inactive' && (
+      width: 180,
+      fixed: 'right' as const,
+      render: (_: any, record: Process) => {
+        const items = [
+          record.status === 'inactive' ? {
+            key: 'activate',
+            label: '激活',
+            icon: <PlayCircleOutlined />,
+            onClick: () => handleActivate(record.id),
+          } : null,
+          record.status === 'active' ? {
+            key: 'deactivate',
+            label: '停用',
+            icon: <PauseCircleOutlined />,
+            onClick: () => handleDeactivate(record.id),
+          } : null,
+          record.status !== 'archived' ? {
+            key: 'archive',
+            label: '归档',
+            icon: <InboxOutlined />,
+            onClick: () => handleArchive(record.id),
+          } : null,
+          {
+            key: 'delete',
+            label: (
+              <Popconfirm
+                title="确定要删除此流程吗？"
+                onConfirm={() => handleDelete(record.id)}
+                okText="确定"
+                cancelText="取消"
+              >
+                <span>删除</span>
+              </Popconfirm>
+            ),
+            icon: <DeleteOutlined />,
+            danger: true,
+          },
+        ].filter((item): item is NonNullable<typeof item> => item !== null);
+
+        return (
+          <Space size="middle" style={{ whiteSpace: 'nowrap' }}>
             <Button 
               type="link" 
-              icon={<PlayCircleOutlined />} 
-              onClick={() => handleActivate(record.id)}
+              icon={<EditOutlined />} 
+              onClick={() => handleEdit(record)}
             >
-              激活
+              编辑
             </Button>
-          )}
-          
-          {record.status === 'active' && (
-            <Button 
-              type="link" 
-              icon={<PauseCircleOutlined />} 
-              onClick={() => handleDeactivate(record.id)}
+            <Dropdown
+              menu={{ items }}
+              placement="bottomRight"
             >
-              停用
-            </Button>
-          )}
-          
-          {record.status !== 'archived' && (
-            <Button 
-              type="link" 
-              icon={<InboxOutlined />} 
-              onClick={() => handleArchive(record.id)}
-            >
-              归档
-            </Button>
-          )}
-          
-          <Popconfirm
-            title="确定要删除此流程吗？"
-            onConfirm={() => handleDelete(record.id)}
-            okText="确定"
-            cancelText="取消"
-          >
-            <Button 
-              type="link" 
-              danger 
-              icon={<DeleteOutlined />}
-            >
-              删除
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
+              <Button type="link" icon={<MoreOutlined />} />
+            </Dropdown>
+          </Space>
+        );
+      },
     },
   ];
 
