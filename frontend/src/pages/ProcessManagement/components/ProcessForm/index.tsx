@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Form, Input, Button, Space, message } from 'antd';
-import { processService } from '@/services/processService';
-import type { ProcessStep } from '@/services/processService';
+import React, { useState, useEffect } from 'react';
+import { Form, Input, Button, Space, message, Card, Divider, InputNumber, Select, Tag } from 'antd';
+import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
+import { processService } from '../../../../services/processService';
+import type { ProcessStep } from '../../../../services/processService';
 
 interface ProcessFormProps {
   initialValues?: any;
@@ -11,14 +12,33 @@ interface ProcessFormProps {
 
 const ProcessForm: React.FC<ProcessFormProps> = ({ initialValues, onSubmit, onCancel }) => {
   const [form] = Form.useForm();
-  const [steps, setSteps] = useState<Omit<ProcessStep, 'id'>[]>(initialValues?.steps || []);
+  const [steps, setSteps] = useState<Omit<ProcessStep, 'id'>[]>([]);
+
+  // 监听 initialValues 变化，更新表单和步骤数据
+  useEffect(() => {
+    if (initialValues) {
+      form.setFieldsValue({
+        name: initialValues.name,
+        description: initialValues.description,
+      });
+      setSteps(initialValues.steps || []);
+    } else {
+      form.resetFields();
+      setSteps([]);
+    }
+  }, [initialValues, form]);
 
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      // 确保每个步骤都有正确的 order 值
+      const stepsWithOrder = steps.map((step, index) => ({
+        ...step,
+        order: index + 1,
+      }));
       onSubmit({
         ...values,
-        steps,
+        steps: stepsWithOrder,
       });
     } catch (error) {
       console.error('表单验证失败:', error);
@@ -30,16 +50,18 @@ const ProcessForm: React.FC<ProcessFormProps> = ({ initialValues, onSubmit, onCa
       name: '',
       description: '',
       order: steps.length + 1,
-      assigneeRole: '',
-      requiredFields: [],
+      assignee_role: '',
+      deadline: 3,
+      required_fields: [],
     };
     setSteps([...steps, newStep]);
   };
 
   const handleRemoveStep = (index: number) => {
-    const newSteps = steps.filter((_, i) => i !== index);
+    const newSteps = [...steps];
+    newSteps.splice(index, 1);
     // 重新排序
-    newSteps.forEach((step, i) => {
+    newSteps.forEach((step: Omit<ProcessStep, 'id'>, i: number) => {
       step.order = i + 1;
     });
     setSteps(newSteps);
@@ -54,18 +76,39 @@ const ProcessForm: React.FC<ProcessFormProps> = ({ initialValues, onSubmit, onCa
     setSteps(newSteps);
   };
 
+  // 添加必填字段
+  const handleAddRequiredField = (stepIndex: number) => {
+    const fieldName = prompt('请输入字段名称');
+    if (fieldName) {
+      const newSteps = [...steps];
+      newSteps[stepIndex].required_fields = [
+        ...newSteps[stepIndex].required_fields,
+        fieldName,
+      ];
+      setSteps(newSteps);
+    }
+  };
+
+  // 删除必填字段
+  const handleRemoveRequiredField = (stepIndex: number, fieldIndex: number) => {
+    const newSteps = [...steps];
+    newSteps[stepIndex].required_fields = newSteps[stepIndex].required_fields.filter(
+      (_: string, i: number) => i !== fieldIndex
+    );
+    setSteps(newSteps);
+  };
+
   return (
     <Form
       form={form}
       layout="vertical"
-      initialValues={initialValues}
     >
       <Form.Item
         name="name"
         label="流程名称"
         rules={[{ required: true, message: '请输入流程名称' }]}
       >
-        <Input />
+        <Input placeholder="请输入流程名称" />
       </Form.Item>
 
       <Form.Item
@@ -73,51 +116,94 @@ const ProcessForm: React.FC<ProcessFormProps> = ({ initialValues, onSubmit, onCa
         label="流程描述"
         rules={[{ required: true, message: '请输入流程描述' }]}
       >
-        <Input.TextArea rows={4} />
+        <Input.TextArea rows={4} placeholder="请输入流程描述" />
       </Form.Item>
 
-      <div>
-        <h3>流程步骤</h3>
-        {steps.map((step, index) => (
-          <div key={index} style={{ marginBottom: 16, padding: 16, border: '1px solid #d9d9d9', borderRadius: 4 }}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Space>
-                <Input
-                  placeholder="步骤名称"
-                  value={step.name}
-                  onChange={(e) => handleStepChange(index, 'name', e.target.value)}
-                  style={{ width: 200 }}
-                />
-                <Input
-                  placeholder="处理角色"
-                  value={step.assigneeRole}
-                  onChange={(e) => handleStepChange(index, 'assigneeRole', e.target.value)}
-                  style={{ width: 200 }}
-                />
-                <Button type="link" danger onClick={() => handleRemoveStep(index)}>
-                  删除
-                </Button>
-              </Space>
-              <Input.TextArea
-                placeholder="步骤描述"
-                value={step.description}
-                onChange={(e) => handleStepChange(index, 'description', e.target.value)}
-                rows={2}
-              />
-              <Input
-                placeholder="处理期限（天数）"
-                type="number"
-                value={step.deadline}
-                onChange={(e) => handleStepChange(index, 'deadline', parseInt(e.target.value))}
+      <Divider orientation="left">流程步骤</Divider>
+
+      {steps.map((step, index) => (
+        <Card
+          key={index}
+          size="small"
+          style={{ marginBottom: 16 }}
+          extra={
+            <Button
+              type="text"
+              danger
+              icon={<MinusCircleOutlined />}
+              onClick={() => handleRemoveStep(index)}
+            />
+          }
+        >
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Input
+              placeholder="步骤名称"
+              value={step.name}
+              onChange={(e) => handleStepChange(index, 'name', e.target.value)}
+            />
+            <Input.TextArea
+              placeholder="步骤描述"
+              value={step.description}
+              onChange={(e) => handleStepChange(index, 'description', e.target.value)}
+              rows={2}
+            />
+            <Space>
+              <Select
+                placeholder="审批角色"
                 style={{ width: 200 }}
+                value={step.assignee_role}
+                onChange={(value) => handleStepChange(index, 'assignee_role', value)}
+              >
+                <Select.Option value="manager">部门经理</Select.Option>
+                <Select.Option value="director">总监</Select.Option>
+                <Select.Option value="ceo">CEO</Select.Option>
+                <Select.Option value="finance">财务</Select.Option>
+                <Select.Option value="hr">人力资源</Select.Option>
+              </Select>
+              <InputNumber
+                placeholder="截止天数"
+                min={1}
+                value={step.deadline}
+                onChange={(value) => handleStepChange(index, 'deadline', value)}
+                addonAfter="天"
               />
             </Space>
-          </div>
-        ))}
-        <Button type="dashed" onClick={handleAddStep} style={{ width: '100%' }}>
-          添加步骤
-        </Button>
-      </div>
+            
+            <div>
+              <div style={{ marginBottom: 8 }}>
+                <Button
+                  type="dashed"
+                  onClick={() => handleAddRequiredField(index)}
+                  icon={<PlusOutlined />}
+                >
+                  添加必填字段
+                </Button>
+              </div>
+              <div>
+                {step.required_fields.map((field: string, fieldIndex: number) => (
+                  <Tag
+                    key={fieldIndex}
+                    closable
+                    onClose={() => handleRemoveRequiredField(index, fieldIndex)}
+                    style={{ marginBottom: 8, marginRight: 8 }}
+                  >
+                    {field}
+                  </Tag>
+                ))}
+              </div>
+            </div>
+          </Space>
+        </Card>
+      ))}
+
+      <Button
+        type="dashed"
+        onClick={handleAddStep}
+        icon={<PlusOutlined />}
+        style={{ width: '100%', marginBottom: 24 }}
+      >
+        添加步骤
+      </Button>
 
       <Form.Item style={{ marginTop: 24, textAlign: 'right' }}>
         <Space>
