@@ -17,9 +17,9 @@ export interface ProcessStep {
   name: string;
   description: string;
   order: number;
-  assigneeRole: string;
+  assignee_role: string;
   deadline?: number; // 天数
-  requiredFields: string[];
+  required_fields: string[];
 }
 
 export interface ProcessInstance {
