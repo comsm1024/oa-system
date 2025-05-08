@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Space, Tag, Input, Select, message, Popconfirm, Modal, Form, Divider, InputNumber, Select as AntSelect } from 'antd';
-import { PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined, PauseCircleOutlined, InboxOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { processService, Process, ProcessListParams, ProcessStep, ProcessCreateParams } from '../../../../services/processService';
+import { Table, Card, Button, Space, Tag, Input, Select, message, Popconfirm, Modal } from 'antd';
+import { PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined, PlayCircleOutlined, PauseCircleOutlined, InboxOutlined } from '@ant-design/icons';
+import { processService, Process, ProcessListParams } from '../../../../services/processService';
 import { useNavigate } from 'react-router-dom';
 import ProcessForm from '../ProcessForm';
 
@@ -19,9 +19,6 @@ const ProcessList: React.FC = () => {
   
   // 创建流程相关状态
   const [createModalVisible, setCreateModalVisible] = useState(false);
-  const [createForm] = Form.useForm();
-  const [createLoading, setCreateLoading] = useState(false);
-  const [steps, setSteps] = useState<Omit<ProcessStep, 'id'>[]>([]);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [currentProcess, setCurrentProcess] = useState<Process | null>(null);
 
@@ -116,9 +113,15 @@ const ProcessList: React.FC = () => {
   };
 
   // 处理编辑流程
-  const handleEdit = (process: Process) => {
-    setCurrentProcess(process);
-    setEditModalVisible(true);
+  const handleEdit = async (process: Process) => {
+    try {
+      // 获取流程详情
+      const processDetail = await processService.getProcessDetail(process.id);
+      setCurrentProcess(processDetail);
+      setEditModalVisible(true);
+    } catch (error) {
+      message.error('获取流程详情失败');
+    }
   };
 
   // 处理创建流程
@@ -128,98 +131,14 @@ const ProcessList: React.FC = () => {
 
   // 处理创建流程表单提交
   const handleCreateSubmit = async (values: any) => {
-    setCreateLoading(true);
     try {
-      const processData: ProcessCreateParams = {
-        name: values.name,
-        description: values.description,
-        steps: steps,
-      };
-      
-      await processService.createProcess(processData);
+      await processService.createProcess(values);
       message.success('流程创建成功');
       setCreateModalVisible(false);
-      resetCreateForm();
       fetchProcessList();
     } catch (error) {
       // 错误已在请求拦截器中处理
-    } finally {
-      setCreateLoading(false);
     }
-  };
-
-  // 重置创建表单
-  const resetCreateForm = () => {
-    createForm.resetFields();
-    setSteps([]);
-  };
-
-  // 添加步骤
-  const handleAddStep = () => {
-    const newStep: Omit<ProcessStep, 'id'> = {
-      name: '',
-      description: '',
-      order: steps.length + 1,
-      assigneeRole: '',
-      deadline: 3,
-      requiredFields: [],
-    };
-    setSteps([...steps, newStep]);
-  };
-
-  // 删除步骤
-  const handleRemoveStep = (index: number) => {
-    const newSteps = [...steps];
-    newSteps.splice(index, 1);
-    // 重新排序
-    newSteps.forEach((step, i) => {
-      step.order = i + 1;
-    });
-    setSteps(newSteps);
-  };
-
-  // 更新步骤
-  const handleUpdateStep = (index: number, field: keyof Omit<ProcessStep, 'id'>, value: any) => {
-    const newSteps = [...steps];
-    newSteps[index] = {
-      ...newSteps[index],
-      [field]: value,
-    };
-    setSteps(newSteps);
-  };
-
-  // 添加必填字段
-  const handleAddRequiredField = (stepIndex: number) => {
-    Modal.confirm({
-      title: '添加必填字段',
-      content: (
-        <Input
-          placeholder="请输入字段名称"
-          onPressEnter={(e) => {
-            const fieldName = (e.target as HTMLInputElement).value;
-            if (fieldName) {
-              const newSteps = [...steps];
-              newSteps[stepIndex].requiredFields = [
-                ...newSteps[stepIndex].requiredFields,
-                fieldName,
-              ];
-              setSteps(newSteps);
-              Modal.destroyAll();
-            }
-          }}
-        />
-      ),
-      onCancel: () => Modal.destroyAll(),
-    });
-  };
-
-  // 删除必填字段
-  const handleRemoveRequiredField = (stepIndex: number, fieldIndex: number) => {
-    const newSteps = [...steps];
-    newSteps[stepIndex].requiredFields = newSteps[stepIndex].requiredFields.filter(
-      (_, i) => i !== fieldIndex
-    );
-    setSteps(newSteps);
   };
 
   // 处理编辑提交
@@ -392,130 +311,14 @@ const ProcessList: React.FC = () => {
       <Modal
         title="创建流程"
         open={createModalVisible}
-        onCancel={() => {
-          setCreateModalVisible(false);
-          resetCreateForm();
-        }}
-        width={800}
+        onCancel={() => setCreateModalVisible(false)}
         footer={null}
+        width={800}
       >
-        <Form
-          form={createForm}
-          layout="vertical"
-          onFinish={handleCreateSubmit}
-          initialValues={{
-            name: '',
-            description: '',
-          }}
-        >
-          <Form.Item
-            name="name"
-            label="流程名称"
-            rules={[{ required: true, message: '请输入流程名称' }]}
-          >
-            <Input placeholder="请输入流程名称" />
-          </Form.Item>
-
-          <Form.Item
-            name="description"
-            label="流程描述"
-            rules={[{ required: true, message: '请输入流程描述' }]}
-          >
-            <Input.TextArea rows={4} placeholder="请输入流程描述" />
-          </Form.Item>
-
-          <Divider orientation="left">流程步骤</Divider>
-
-          {steps.map((step, index) => (
-            <Card
-              key={index}
-              size="small"
-              style={{ marginBottom: 16 }}
-              extra={
-                <Button
-                  type="text"
-                  danger
-                  icon={<MinusCircleOutlined />}
-                  onClick={() => handleRemoveStep(index)}
-                />
-              }
-            >
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Input
-                  placeholder="步骤名称"
-                  value={step.name}
-                  onChange={(e) => handleUpdateStep(index, 'name', e.target.value)}
-                />
-                <Input.TextArea
-                  placeholder="步骤描述"
-                  value={step.description}
-                  onChange={(e) => handleUpdateStep(index, 'description', e.target.value)}
-                  rows={2}
-                />
-                <Space>
-                  <AntSelect
-                    placeholder="审批角色"
-                    style={{ width: 200 }}
-                    value={step.assigneeRole}
-                    onChange={(value) => handleUpdateStep(index, 'assigneeRole', value)}
-                  >
-                    <Option value="manager">部门经理</Option>
-                    <Option value="director">总监</Option>
-                    <Option value="ceo">CEO</Option>
-                    <Option value="finance">财务</Option>
-                    <Option value="hr">人力资源</Option>
-                  </AntSelect>
-                  <InputNumber
-                    placeholder="截止天数"
-                    min={1}
-                    value={step.deadline}
-                    onChange={(value) => handleUpdateStep(index, 'deadline', value)}
-                    addonAfter="天"
-                  />
-                </Space>
-                
-                <div>
-                  <div style={{ marginBottom: 8 }}>
-                    <Button
-                      type="dashed"
-                      onClick={() => handleAddRequiredField(index)}
-                      icon={<PlusOutlined />}
-                    >
-                      添加必填字段
-                    </Button>
-                  </div>
-                  <div>
-                    {step.requiredFields.map((field, fieldIndex) => (
-                      <Tag
-                        key={fieldIndex}
-                        closable
-                        onClose={() => handleRemoveRequiredField(index, fieldIndex)}
-                        style={{ marginBottom: 8, marginRight: 8 }}
-                      >
-                        {field}
-                      </Tag>
-                    ))}
-                  </div>
-                </div>
-              </Space>
-            </Card>
-          ))}
-
-          <Button
-            type="dashed"
-            onClick={handleAddStep}
-            icon={<PlusOutlined />}
-            style={{ width: '100%', marginBottom: 24 }}
-          >
-            添加步骤
-          </Button>
-
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={createLoading}>
-              保存流程
-            </Button>
-          </Form.Item>
-        </Form>
+        <ProcessForm
+          onSubmit={handleCreateSubmit}
+          onCancel={() => setCreateModalVisible(false)}
+        />
       </Modal>
 
       {/* 编辑弹窗 */}
