@@ -71,13 +71,10 @@ const processDefinitionController = {
         WHERE process_id = ?
         ORDER BY order_num
       `, [req.params.id]);
-
+      
       const result = {
         ...process[0],
-        steps: steps.map(step => ({
-          ...step,
-          requiredFields: JSON.parse(step.required_fields)
-        }))
+        steps
       };
 
       res.json(response.success(result));
@@ -131,9 +128,9 @@ const processDefinitionController = {
               step.name,
               step.description,
               step.order,
-              step.assigneeRole,
+              step.assignee_role,
               step.deadline,
-              JSON.stringify(step.requiredFields)
+              JSON.stringify(step.required_fields)
             ]
           );
         }
@@ -193,9 +190,9 @@ const processDefinitionController = {
               step.name,
               step.description,
               step.order,
-              step.assigneeRole,
+              step.assignee_role,
               step.deadline,
-              JSON.stringify(step.requiredFields)
+              JSON.stringify(step.required_fields)
             ]
           );
         }
