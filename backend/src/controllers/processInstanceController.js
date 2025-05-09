@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const response = require('../utils/response');
 
 const processInstanceController = {
   // 获取流程实例列表
@@ -44,7 +45,7 @@ const processInstanceController = {
 
       const [instances] = await db.query(query, params);
 
-      res.json({
+      res.json(response.success({
         list: instances.map(instance => ({
           ...instance,
           data: JSON.parse(instance.data)
@@ -52,9 +53,9 @@ const processInstanceController = {
         total,
         page: parseInt(page),
         pageSize: parseInt(pageSize)
-      });
+      }));
     } catch (error) {
-      res.status(500).json({ message: 'Error fetching process instances', error: error.message });
+      res.status(500).json(response.serverError('获取流程实例列表失败'));
     }
   },
 
