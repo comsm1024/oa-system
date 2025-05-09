@@ -348,7 +348,31 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
       <Sider width={200} theme="light">
         <div>
           <div style={{ padding: '16px', fontWeight: 'bold', fontSize: '16px' }}>流程节点</div>
-          <div className="lf-dnd-container" style={{ height: 'calc(100vh - 220px)', padding: '0 16px 16px 16px', overflowY: 'auto' }} />
+          <div style={{ padding: '0 16px 16px 16px' }}>
+            {nodeTypes.map(node => (
+              <div
+                key={node.type}
+                className="lf-dnd-item"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('nodeType', node.type);
+                }}
+                style={{
+                  padding: '8px',
+                  marginBottom: '8px',
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '4px',
+                  cursor: 'move',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>{node.icon}</span>
+                <span>{node.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </Sider>
       <Layout className='process-designer-content'>
