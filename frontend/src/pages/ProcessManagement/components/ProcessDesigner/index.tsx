@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Layout, Menu, Button, Space, message, Modal, Form, Input, Select, Steps } from 'antd';
+import { Layout, Button, Space, message, Modal, Form, Input, Select, Steps } from 'antd';
 import Card from 'antd/es/card';
 import {
   SaveOutlined,
@@ -17,7 +17,6 @@ import { DndPanel, SelectionSelect, Control, MiniMap } from '@logicflow/extensio
 import '@logicflow/core/dist/index.css';
 import '@logicflow/extension/lib/style/index.css';
 import './index.css';
-import type { DndPanel as DndPanelType } from '@logicflow/extension';
 
 const { Sider, Content } = Layout;
 const { Option } = Select;
@@ -76,9 +75,73 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
       container: containerRef.current,
       grid: true,
       plugins: [DndPanel, SelectionSelect, Control, MiniMap],
+      nodeTextEdit: true,
+      nodeTextDraggable: false,
+      adjustEdge: true,
+      adjustNodePosition: true,
+      dragOnConnecting: true,
+      style: {
+        rect: {
+          width: 120,
+          height: 60,
+          radius: 5,
+          strokeWidth: 2,
+        },
+        circle: {
+          r: 25,
+          strokeWidth: 2,
+        },
+        diamond: {
+          width: 80,
+          height: 80,
+          strokeWidth: 2,
+        },
+        nodeText: {
+          overflowMode: 'autoWrap',
+          fontSize: 12,
+        },
+        edgeText: {
+          textWidth: 100,
+          fontSize: 12,
+          background: {
+            fill: '#fff',
+          },
+        },
+      },
     });
 
     console.log('LogicFlow 已初始化');
+
+    // 设置默认边类型
+    logicflow.setDefaultEdgeType('polyline');
+
+    // 注册节点事件
+    logicflow.on('node:click', ({ data }) => {
+      setCurrentNode(data);
+      nodeForm.setFieldsValue(data.properties);
+      setNodeModalVisible(true);
+    });
+
+    // 注册边事件
+    logicflow.on('edge:click', ({ data }) => {
+      console.log('点击边', data);
+    });
+
+    // 注册画布事件
+    logicflow.on('blank:click', () => {
+      setCurrentNode(null);
+      setNodeModalVisible(false);
+    });
+
+    // 注册连接事件
+    logicflow.on('connection:created', ({ data }) => {
+      console.log('创建连接', data);
+    });
+
+    // 注册删除事件
+    logicflow.on('element:delete', ({ data }) => {
+      console.log('删除元素', data);
+    });
 
     const dndPanel = logicflow.extension.dndPanel as any;
     dndPanel.setPatternItems([
@@ -151,9 +214,69 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
   // 保存流程
   const handleSave = () => {
     if (!lf) return;
+    
+    // 获取流程数据
     const data = lf.getGraphData();
+    
+    // 验证流程
+    const errors = validateProcess(data);
+    if (errors.length > 0) {
+      message.error(errors.join('\n'));
+      return;
+    }
+
+    // 保存流程
     onSave?.(data);
     message.success('保存成功');
+  };
+
+  // 验证流程
+  const validateProcess = (data: any) => {
+    const errors: string[] = [];
+    const nodes = data.nodes || [];
+    const edges = data.edges || [];
+
+    // 检查是否有开始节点
+    const startNodes = nodes.filter((node: any) => node.type === 'circle' && node.text.value === '开始');
+    if (startNodes.length === 0) {
+      errors.push('流程必须包含一个开始节点');
+    } else if (startNodes.length > 1) {
+      errors.push('流程只能包含一个开始节点');
+    }
+
+    // 检查是否有结束节点
+    const endNodes = nodes.filter((node: any) => node.type === 'circle' && node.text.value === '结束');
+    if (endNodes.length === 0) {
+      errors.push('流程必须包含一个结束节点');
+    }
+
+    // 检查节点连接
+    nodes.forEach((node: any) => {
+      const outEdges = edges.filter((edge: any) => edge.sourceNodeId === node.id);
+      const inEdges = edges.filter((edge: any) => edge.targetNodeId === node.id);
+
+      // 开始节点必须有出边
+      if (node.type === 'circle' && node.text.value === '开始' && outEdges.length === 0) {
+        errors.push('开始节点必须有出边');
+      }
+
+      // 结束节点必须有入边
+      if (node.type === 'circle' && node.text.value === '结束' && inEdges.length === 0) {
+        errors.push('结束节点必须有入边');
+      }
+
+      // 条件节点必须有多个出边
+      if (node.type === 'diamond' && outEdges.length < 2) {
+        errors.push('条件节点必须有多个出边');
+      }
+
+      // 其他节点必须有入边和出边
+      if (node.type !== 'circle' && (inEdges.length === 0 || outEdges.length === 0)) {
+        errors.push(`节点 ${node.text.value || node.id} 必须有入边和出边`);
+      }
+    });
+
+    return errors;
   };
 
   // 导入流程
@@ -194,10 +317,9 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
   const handleStartSimulation = () => {
     if (!lf) return;
     const data = lf.getGraphData() as GraphData;
-    console.log(data);
     
     // 查找开始节点
-    const startNode = data.nodes.find(node => node.type === 'start');
+    const startNode = data.nodes.find(node => node.type === 'circle' && node.text.value === '开始');
     if (!startNode) {
       message.error('流程中必须包含开始节点');
       return;
@@ -226,7 +348,7 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
     if (!currentNode) return;
     
     // 如果是结束节点，完成模拟
-    if (currentNode.type === 'end') {
+    if (currentNode.type === 'circle' && currentNode.text.value === '结束') {
       setSimulationPath(prev => [
         ...prev,
         {
@@ -240,10 +362,10 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
       return;
     }
     
-    // 如果有多个出边（条件或并行），显示选择对话框
-    if (edges.length > 1) {
+    // 如果是条件节点，显示条件选择
+    if (currentNode.type === 'diamond') {
       Modal.confirm({
-        title: '选择下一步',
+        title: '条件判断',
         content: (
           <Select
             style={{ width: '100%' }}
@@ -255,8 +377,8 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
                   {
                     node: nextNode,
                     status: 'process',
-                    title: nextNode.properties?.name || nextNode.type,
-                    description: `执行${nextNode.type === 'condition' ? '条件判断' : '节点任务'}`
+                    title: nextNode.properties?.name || nextNode.text.value || nextNode.type,
+                    description: `执行${nextNode.type === 'diamond' ? '条件判断' : '节点任务'}`
                   }
                 ]);
                 setCurrentStep(prev => prev + 1);
@@ -267,7 +389,7 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
               const targetNode = data.nodes.find(node => node.id === edge.targetNodeId);
               return (
                 <Select.Option key={targetNode?.id} value={targetNode?.id}>
-                  {targetNode?.properties?.name || targetNode?.type}
+                  {targetNode?.properties?.name || targetNode?.text.value || targetNode?.type}
                 </Select.Option>
               );
             })}
@@ -283,8 +405,8 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
           {
             node: nextNode,
             status: 'process',
-            title: nextNode.properties?.name || nextNode.type,
-            description: `执行${nextNode.type === 'condition' ? '条件判断' : '节点任务'}`
+            title: nextNode.properties?.name || nextNode.text.value || nextNode.type,
+            description: `执行${nextNode.type === 'diamond' ? '条件判断' : '节点任务'}`
           }
         ]);
         setCurrentStep(prev => prev + 1);
@@ -409,19 +531,32 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
           {currentNode?.type === 'approval' && (
             <>
               <Form.Item
-                name="assignee"
-                label="审批人"
-                rules={[{ required: true, message: '请选择审批人' }]}
+                name="assigneeType"
+                label="处理人类型"
+                rules={[{ required: true, message: '请选择处理人类型' }]}
               >
                 <Select>
-                  <Option value="user1">张三</Option>
-                  <Option value="user2">李四</Option>
-                  <Option value="user3">王五</Option>
+                  <Option value="role">按角色</Option>
+                  <Option value="user">指定用户</Option>
+                  <Option value="department">按部门</Option>
                 </Select>
               </Form.Item>
+
               <Form.Item
-                name="dueDate"
-                label="截止时间"
+                name="assignee"
+                label="处理人"
+                rules={[{ required: true, message: '请选择处理人' }]}
+              >
+                <Select>
+                  <Option value="manager">部门经理</Option>
+                  <Option value="hr">人事</Option>
+                  <Option value="finance">财务</Option>
+                </Select>
+              </Form.Item>
+
+              <Form.Item
+                name="timeout"
+                label="超时时间"
               >
                 <Input type="number" addonAfter="小时" />
               </Form.Item>
@@ -429,13 +564,52 @@ const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ processKey, onSave })
           )}
 
           {currentNode?.type === 'condition' && (
-            <Form.Item
-              name="condition"
-              label="条件表达式"
-              rules={[{ required: true, message: '请输入条件表达式' }]}
-            >
-              <Input.TextArea rows={4} placeholder="请输入条件表达式，例如：amount > 1000" />
-            </Form.Item>
+            <>
+              <Form.Item
+                name="conditionType"
+                label="条件类型"
+                rules={[{ required: true, message: '请选择条件类型' }]}
+              >
+                <Select>
+                  <Option value="form">表单字段</Option>
+                  <Option value="script">自定义脚本</Option>
+                </Select>
+              </Form.Item>
+
+              <Form.Item
+                name="condition"
+                label="条件表达式"
+                rules={[{ required: true, message: '请输入条件表达式' }]}
+              >
+                <Input.TextArea rows={4} placeholder="请输入条件表达式，例如：amount > 1000" />
+              </Form.Item>
+            </>
+          )}
+
+          {currentNode?.type === 'parallel' && (
+            <>
+              <Form.Item
+                name="parallelType"
+                label="并行类型"
+                rules={[{ required: true, message: '请选择并行类型' }]}
+              >
+                <Select>
+                  <Option value="all">全部通过</Option>
+                  <Option value="any">任一通过</Option>
+                  <Option value="count">指定数量</Option>
+                </Select>
+              </Form.Item>
+
+              {nodeForm.getFieldValue('parallelType') === 'count' && (
+                <Form.Item
+                  name="count"
+                  label="通过数量"
+                  rules={[{ required: true, message: '请输入通过数量' }]}
+                >
+                  <Input type="number" min={1} />
+                </Form.Item>
+              )}
+            </>
           )}
         </Form>
       </Modal>
