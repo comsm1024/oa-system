@@ -1,13 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const dailyController = require('../controllers/dailyController');
+const leaveController = require('../controllers/leaveController');
+const authMiddleware = require('../middleware/authMiddleware');
 
-// 日常管理路由
-router.get('/tasks', dailyController.getTasks);
-router.get('/tasks/:id', dailyController.getTaskById);
-router.post('/tasks', dailyController.createTask);
-router.put('/tasks/:id', dailyController.updateTask);
-router.put('/tasks/:id/status', dailyController.updateTaskStatus);
-router.delete('/tasks/:id', dailyController.deleteTask);
+router.get('/leave/list', leaveController.getLeaveList);
+router.post('/leave/create', authMiddleware, leaveController.createLeave);
+
 
 module.exports = router; 

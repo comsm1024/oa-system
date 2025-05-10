@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   Table,
@@ -14,25 +14,25 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
+import { leaveService } from '../../../services/leaveService';
 
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 const { Option } = Select;
 
 interface LeaveRequest {
-  key: string;
-  employeeName: string;
-  leaveType: string;
-  startDate: string;
-  endDate: string;
-  duration: number;
-  reason: string;
-  status: 'pending' | 'approved' | 'rejected';
 }
 
 const LeaveManagement = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [form] = Form.useForm();
+  const [total, setTotal] = useState(0);
+  const [searchParams, setSearchParams] = useState({
+    page: 1,
+    pageSize: 10,
+  });
+  const [loading, setLoading] = useState(false);
+  const [leaveList, setLeaveList] = useState<LeaveRequest[]>([]);
 
   const columns: ColumnsType<LeaveRequest> = [
     {
@@ -113,57 +113,102 @@ const LeaveManagement = () => {
     },
   ];
 
-  const sampleData: LeaveRequest[] = [
-    {
-      key: '1',
-      employeeName: '张三',
-      leaveType: '年假',
-      startDate: '2024-03-25',
-      endDate: '2024-03-26',
-      duration: 2,
-      reason: '家庭事务',
-      status: 'pending',
-    },
-    {
-      key: '2',
-      employeeName: '李四',
-      leaveType: '病假',
-      startDate: '2024-03-27',
-      endDate: '2024-03-28',
-      duration: 2,
-      reason: '身体不适，需要就医',
-      status: 'approved',
-    },
-  ];
+  const fetchLeaveList = async () => {
+    setLoading(true);
+    try {
+      const response = await leaveService.getLeaveList(searchParams);
+      setLeaveList(response.list);
+      setTotal(response.total);
+    } catch (error) {
+      console.error('获取请假列表失败:', error);
+      message.error('获取请假列表失败');
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const handleApprove = (key: string) => {
-    message.success('请假申请已批准');
+  useEffect(() => {
+    fetchLeaveList();
+  }, [searchParams])
+
+  const handleApprove = async (key: string) => {
+    Modal.confirm({
+      title: '审批确认',
+      content: '确定通过该请假申请吗？',
+      onOk: async () => {
+        try {
+          const response = await leaveService.approveLeave(key, {
+            processKey: key,
+            comment: '同意'
+          });
+          
+          if (response.success) {
+            message.success('请假申请已批准');
+            // 刷新列表
+            fetchLeaveList();
+          } else {
+            message.error(response.message || '审批失败');
+          }
+        } catch (error) {
+          console.error('审批失败:', error);
+          message.error('审批失败，请稍后重试');
+        }
+      }
+    });
   };
 
-  const handleReject = (key: string) => {
-    message.error('请假申请已拒绝');
+  const handleReject = async (key: string) => {
+    Modal.confirm({
+      title: '审批确认',
+      content: '确定拒绝该请假申请吗？',
+      onOk: async () => {
+        try {
+          const response = await leaveService.rejectLeave({
+            processKey: key,
+            comment: '拒绝'
+          });
+          
+          if (response.success) {
+            message.error('请假申请已拒绝');
+            // 刷新列表
+            fetchLeaveList();
+          } else {
+            message.error(response.message || '审批失败');
+          }
+        } catch (error) {
+          console.error('审批失败:', error);
+          message.error('审批失败，请稍后重试');
+        }
+      }
+    });
   };
 
   const handleView = (record: LeaveRequest) => {
     const formData = {
       ...record,
-      dateRange: [dayjs(record.startDate), dayjs(record.endDate)],
+      dateRange: [dayjs(record.start_time), dayjs(record.end_time)],
     };
     form.setFieldsValue(formData);
     setIsModalVisible(true);
   };
 
-  const handleSubmit = (values: any) => {
+  const handleSubmit = async (values: any) => {
     const formattedValues = {
       ...values,
-      startDate: values.dateRange[0].format('YYYY-MM-DD'),
-      endDate: values.dateRange[1].format('YYYY-MM-DD'),
+      start_time: values.dateRange[0].format('YYYY-MM-DD'),
+      end_time: values.dateRange[1].format('YYYY-MM-DD'),
       dateRange: undefined,
     };
     console.log('提交的请假申请:', formattedValues);
-    message.success('请假申请已提交');
-    setIsModalVisible(false);
-    form.resetFields();
+    try {
+      await leaveService.createLeave(formattedValues);
+      message.success('请假申请已提交');
+      setIsModalVisible(false);
+      form.resetFields();
+    } catch (error) {
+      console.error('提交请假申请失败:', error);
+      message.error('提交请假申请失败');
+    }
   };
 
   return (
@@ -179,7 +224,19 @@ const LeaveManagement = () => {
           </Button>
         }
       >
-        <Table columns={columns} dataSource={sampleData} />
+        <Table 
+          columns={columns}
+          loading={loading}
+          dataSource={leaveList}
+          pagination={{
+            current: searchParams.page,
+            pageSize: searchParams.pageSize,
+            total,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total) => `共 ${total} 条记录`,
+          }}
+        />
       </Card>
 
       <Modal
