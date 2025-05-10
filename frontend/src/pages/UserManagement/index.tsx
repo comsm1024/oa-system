@@ -24,7 +24,6 @@ import {
   DeleteOutlined,
   SearchOutlined,
   UserOutlined,
-  FilterOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';

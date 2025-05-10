@@ -1,4 +1,4 @@
-import { message, Modal, Progress, Radio, Space } from 'antd';
+import { message, Modal, Radio, Space } from 'antd';
 import type { RadioChangeEvent } from 'antd';
 import { useState } from 'react';
 import dayjs from 'dayjs';

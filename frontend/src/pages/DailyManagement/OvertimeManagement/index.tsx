@@ -22,7 +22,7 @@ import dayjs from 'dayjs';
 import { SearchOutlined, DownloadOutlined } from '@ant-design/icons';
 import { exportToFile } from '../../../utils/export';
 import { ExportModal } from '../../../components/ExportModal.tsx';
-import type { ExportFormat, ExportRow } from '../../../components/ExportModal.tsx';
+import type { ExportFormat } from '../../../components/ExportModal.tsx';
 import { generateMockData, OvertimeRequest } from './mockData';
 
 const { TextArea } = Input;
@@ -155,11 +155,11 @@ const OvertimeManagement = () => {
 
   const sampleData = generateMockData();
 
-  const handleApprove = (key: string) => {
+  const handleApprove = () => {
     message.success('加班申请已批准');
   };
 
-  const handleReject = (key: string) => {
+  const handleReject = () => {
     message.error('加班申请已拒绝');
   };
 

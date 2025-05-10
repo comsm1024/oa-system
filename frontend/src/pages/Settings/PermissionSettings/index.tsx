@@ -1,4 +1,4 @@
-import { Typography, Form, Select, Button, Card, Table, Tag, Space, Switch } from 'antd';
+import { Typography, Form, Select, Button, Card, Table, Space, Switch } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title } = Typography;
@@ -14,7 +14,6 @@ interface RolePermission {
 }
 
 const PermissionSettings = () => {
-  const [form] = Form.useForm();
 
   const columns: ColumnsType<RolePermission> = [
     {
@@ -27,7 +26,7 @@ const PermissionSettings = () => {
       title: '查看',
       dataIndex: 'view',
       key: 'view',
-      render: (value, record) => (
+      render: (value) => (
         <Switch defaultChecked={value} size="small" />
       ),
     },
