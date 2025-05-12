@@ -3,8 +3,54 @@ const response = require('../utils/response');
 
 const departmentController = {
 
-  async createDepartment() {
-    
+  async createDepartment(req, res) {
+    try {
+      const { name, code, parentId, description } = req.body;
+
+      // 参数校验
+      if (!name || !code) {
+        return res.status(400).json(response.error('部门名称和编码不能为空'));
+      }
+
+      // 检查部门编码是否已存在
+      const [existingDept] = await db.query(
+        'SELECT id FROM department WHERE code = ?',
+        [code]
+      );
+
+      if (existingDept.length > 0) {
+        return res.status(400).json(response.error('部门编码已存在'));
+      }
+
+      // 如果有父部门ID,检查父部门是否存在
+      if (parentId) {
+        const [parentDept] = await db.query(
+          'SELECT id FROM department WHERE id = ?',
+          [parentId]
+        );
+
+        if (parentDept.length === 0) {
+          return res.status(400).json(response.error('父部门不存在'));
+        }
+      }
+
+      // 插入新部门
+      const [result] = await db.query(
+        'INSERT INTO department (name, code, parent_id, description) VALUES (?, ?, ?, ?)',
+        [name, code, parentId || null, description]
+      );
+
+      // 获取新创建的部门信息
+      const [newDepartment] = await db.query(
+        'SELECT * FROM department WHERE id = ?',
+        [result.insertId]
+      );
+
+      return res.status(201).json(response.success(newDepartment[0]));
+    } catch (error) {
+      console.error('创建部门失败:', error);
+      return res.status(500).json(response.error(error, '创建部门失败'));
+    }
   },
 
   async getDepartments(req, res) {
