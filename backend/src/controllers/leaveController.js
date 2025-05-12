@@ -1,5 +1,5 @@
 const db = require('../config/database')
-const reponse = require('../utils/response')
+const response = require('../utils/response')
 
 const leaveController = {
     // 获取请假列表
@@ -38,7 +38,7 @@ const leaveController = {
 
             const [leaves] = await db.query(query, params);
 
-            res.json(reponse.success({
+            res.json(response.success({
                 list: leaves,
                 total,
                 page: parseInt(page),
@@ -47,7 +47,7 @@ const leaveController = {
         }
         catch (error) {
             console.error('获取请假列表失败:', error);
-            res.status(500).json(reponse.serverError('获取请假列表失败'));
+            res.status(500).json(response.serverError('获取请假列表失败'));
         }
     },
 
@@ -60,12 +60,12 @@ const leaveController = {
                 [leave_id]
             );
             if (!leave) {
-                return res.status(404).json(reponse.notFound('请假申请不存在'));
+                return res.status(404).json(response.notFound('请假申请不存在'));
             }
-            res.json(reponse.success(leave));
+            res.json(response.success(leave));
         } catch (error) {
             console.error('获取请假详情失败:', error);
-            res.status(500).json(reponse.serverError('获取请假详情失败'));
+            res.status(500).json(response.serverError('获取请假详情失败'));
         }
     },
     
@@ -78,11 +78,11 @@ const leaveController = {
             // 检查用户是否有足够的可用假期
             const [user] = await db.query('SELECT * FROM users WHERE id =?', [user_id]);
             if (!user) {
-                return res.status(404).json(reponse.notFound('用户不存在'));
+                return res.status(404).json(response.notFound('用户不存在'));
             }
 
             if (user.available_leave < 1) {
-                return res.status(400).json(reponse.badRequest('可用假期不足'));
+                return res.status(400).json(response.badRequest('可用假期不足'));
             }
 
             // 开始事务
@@ -105,7 +105,7 @@ const leaveController = {
                 // 提交事务
                 await db.query('COMMIT');
 
-                res.json(reponse.success(null, '请假申请提交成功'));
+                res.json(response.success(null, '请假申请提交成功'));
             } catch (error) {
                 // 回滚事务
                 await db.query('ROLLBACK');
@@ -113,7 +113,7 @@ const leaveController = {
             }
         } catch (error) {
             console.error('提交请假申请失败:', error);
-            res.status(500).json(reponse.serverError('提交请假申请失败'));
+            res.status(500).json(response.serverError('提交请假申请失败'));
         }
     }
 }
