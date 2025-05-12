@@ -7,6 +7,7 @@ const reportRoutes = require('./reportRoutes');
 const processRoutes = require('./processRoutes');
 const dailyRoutes = require('./dailyRoutes');
 const authRoutes = require('./authRoutes');
+const departmentRoutes = require('./departmentRoutes');
 
 // 测试路由
 router.get('/health', (req, res) => {
@@ -33,5 +34,8 @@ router.use('/', processRoutes);
 
 // 日常管理路由
 router.use('/', dailyRoutes);
+
+// 部门路由
+router.use('/', departmentRoutes);
 
 module.exports = router;
