@@ -26,7 +26,7 @@ const leaveController = {
             }
             // 获取总数
             const [countResult] = await db.query(
-                query.replace('SELECT l.*, u.username as user_id', 'SELECT COUNT(*) as total'),
+                query.replace('SELECT l.*, u.username as user_name', 'SELECT COUNT(*) as total'),
                 params
             );
             console.log(countResult)
