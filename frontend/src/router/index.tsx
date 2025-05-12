@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import UserManagement from '../pages/UserManagement';
+import DepartmentManagement from '../pages/UserManagement/DepartmentManagement';
 import ProcessManagement from '../pages/ProcessManagement';
 import DocumentManagement from '../pages/DocumentManagement';
 import DailyManagement from '../pages/DailyManagement';
@@ -37,11 +38,15 @@ const router = createBrowserRouter([
     children: [
       {
         path: '',
-        element: <Navigate to="/user" replace />,
+        element: <Navigate to="/user/list" replace />,
       },
       {
-        path: 'user',
+        path: 'user/list',
         element: <UserManagement />,
+      },
+      {
+        path: 'user/department',
+        element: <DepartmentManagement />,
       },
       {
         path: 'process',

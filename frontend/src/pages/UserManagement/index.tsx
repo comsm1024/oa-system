@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Typography,
   Table,
@@ -221,7 +221,24 @@ const UserManagement = () => {
     });
   };
 
-  const departments = ['技术部', '人事部', '财务部', '市场部', '运营部'];
+  // 新增部门数据状态
+  const [departments, setDepartments] = useState<{id: number, name: string}[]>([]);
+  
+  // 获取部门数据
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await fetch('/api/departments');
+        const data = await response.json();
+        setDepartments(data);
+      } catch (error) {
+        console.error('获取部门列表失败:', error);
+        message.error('获取部门失败');
+      }
+    };
+    fetchDepartments();
+  }, []);
+
   const roles = ['admin', 'manager', 'user'];
 
   return (
@@ -263,7 +280,7 @@ const UserManagement = () => {
                 value={selectedDepartment}
               >
                 {departments.map(dept => (
-                  <Option key={dept} value={dept}>{dept}</Option>
+                  <Option key={dept.id} value={dept.id}>{dept.name}</Option>
                 ))}
               </Select>
               <Tooltip title="重置筛选">
@@ -372,4 +389,4 @@ const UserManagement = () => {
   );
 };
 
-export default UserManagement; 
+export default UserManagement;

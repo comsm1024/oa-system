@@ -57,6 +57,16 @@ const MainLayout = () => {
       key: 'user',
       icon: <UserOutlined />,
       label: '用户管理',
+      children: [
+        {
+          key: 'user/list',
+          label: '用户列表',
+        },
+        {
+          key: 'user/department',
+          label: '部门管理',
+        },
+      ],
     },
     {
       key: 'process',
@@ -127,8 +137,8 @@ const MainLayout = () => {
         <Menu
           theme="dark"
           mode="inline"
-          defaultSelectedKeys={['user']}
-          defaultOpenKeys={['settings']}
+          defaultSelectedKeys={['user/list']}
+          defaultOpenKeys={['user', 'settings']}
           items={menuItems}
           onClick={({ key }) => navigate(`/${key}`)}
         />
