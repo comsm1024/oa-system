@@ -1,6 +1,6 @@
 import { get, post, put, del } from './request';
 
-interface Department {
+export interface Department {
   id: number;
   name: string;
   code: string;
@@ -10,7 +10,7 @@ interface Department {
   updatedAt: string;
 }
 
-interface DepartmentQuery {
+export interface DepartmentQuery {
   page?: number;
   pageSize?: number;
   search?: string;

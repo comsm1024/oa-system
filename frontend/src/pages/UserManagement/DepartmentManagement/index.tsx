@@ -25,7 +25,7 @@ import {
   ApartmentOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import { departmentService } from '../../../services/departmentService';
+import { departmentService, DepartmentQuery } from '../../../services/departmentService';
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -48,7 +48,7 @@ const DepartmentManagement = () => {
   const [form] = Form.useForm();
   const [searchText, setSearchText] = useState('');
   const [total, setTotal] = useState(0);
-  const [searchParams, setSearchParams] = useState({
+  const [searchParams, setSearchParams] = useState<DepartmentQuery>({
     page: 1,
     pageSize: 10,
   });
@@ -64,6 +64,7 @@ const DepartmentManagement = () => {
       });
       
       setDepartments(response.list);
+      setTotal(response.total);
     } catch (error) {
       console.error('获取部门列表失败:', error);
       message.error('获取部门列表失败');
@@ -74,7 +75,7 @@ const DepartmentManagement = () => {
 
   useEffect(() => {
     fetchDepartments();
-  }, []);
+  }, [searchParams]);
 
   // 过滤部门列表
   const filteredDepartments = departments.filter(dept =>
@@ -85,18 +86,22 @@ const DepartmentManagement = () => {
 
   // 构建部门树形数据
   const buildTreeData = (departments: Department[]) => {
-    return departments.map(dept => ({
-      title: dept.name,
-      value: dept.id,
-      disabled: editingDepartment?.id === dept.id, // 不能选择自己作为父部门
-      children: departments
-        .filter(child => child.parentId === dept.id)
-        .map(child => ({
-          title: child.name,
-          value: child.id,
-          disabled: editingDepartment?.id === child.id,
-        })),
-    }));
+    // 递归构建子树
+    const buildTree = (parentId: number | null = null): any[] => {
+      return departments
+        .filter(dept => dept.parentId === parentId)
+        .map(dept => ({
+          title: `${dept.name} (${dept.code})`,
+          value: dept.id,
+          key: dept.id,
+          disabled: editingDepartment?.id === dept.id,
+          children: buildTree(dept.id)
+        }))
+        .filter(node => node.value !== editingDepartment?.id);
+    };
+
+    // 从顶级部门开始构建
+    return buildTree(null);
   };
 
   const columns: ColumnsType<Department> = [
@@ -104,6 +109,7 @@ const DepartmentManagement = () => {
       title: '部门信息',
       dataIndex: 'name',
       key: 'name',
+      minWidth: 160,
       render: (_, record) => (
         <Space>
           <ApartmentOutlined style={{ color: '#1890ff', fontSize: '20px' }} />
@@ -118,6 +124,7 @@ const DepartmentManagement = () => {
       title: '上级部门',
       dataIndex: 'parentId',
       key: 'parentId',
+      minWidth: 150,
       render: (parentId) => {
         if (!parentId) return <Tag color="default">无</Tag>;
         const parent = departments.find(dept => dept.id === parentId);
@@ -133,6 +140,7 @@ const DepartmentManagement = () => {
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
+      minWidth: 150,
       render: (description) => (
         <Tooltip title={description}>
           <span>{description || '-'}</span>
@@ -143,13 +151,13 @@ const DepartmentManagement = () => {
       title: '创建时间',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 180,
+      minWidth: 180,
       render: (date) => new Date(date).toLocaleString(),
     },
     {
       title: '操作',
       key: 'action',
-      width: 180,
+      fixed: 'right',
       render: (_, record) => (
         <Space size="middle">
           <Tooltip title="编辑部门">
@@ -204,6 +212,15 @@ const DepartmentManagement = () => {
     }
   };
 
+  // 处理分页变化
+  const handleTableChange = (pagination: any) => {
+    setSearchParams((prev: DepartmentQuery) => ({
+      ...prev,
+      page: pagination.current,
+      pageSize: pagination.pageSize,
+    }));
+  };
+
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields();
@@ -216,10 +233,15 @@ const DepartmentManagement = () => {
       message.success(editingDepartment ? '更新成功' : '创建成功');
       setIsModalVisible(false);
       form.resetFields();
-      fetchDepartments();
+      if (editingDepartment) {
+        setDepartments(departments.map(dept => 
+          dept.id === editingDepartment.id ? { ...dept, ...values } : dept
+        ));
+      } else {
+        fetchDepartments();
+      }
     } catch (error) {
       console.error(editingDepartment ? '更新部门失败:' : '创建部门失败:', error);
-      message.error(editingDepartment ? '更新部门失败' : '创建部门失败');
     }
   };
 
@@ -257,10 +279,20 @@ const DepartmentManagement = () => {
       </div>
 
       <Table
+        tableLayout="auto"
         columns={columns}
         dataSource={filteredDepartments}
         rowKey="id"
         loading={loading}
+        pagination={{
+          current: searchParams.page,
+          pageSize: searchParams.pageSize,
+          total,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          showTotal: (total) => `共 ${total} 条记录`,
+        }}
+        onChange={handleTableChange}
       />
 
       <Modal
