@@ -25,7 +25,7 @@ import {
   ApartmentOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import { departmentService } from '../../../services/departmentService.ts';
+import { departmentService } from '../../../services/departmentService';
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -62,7 +62,7 @@ const DepartmentManagement = () => {
         ...searchParams,
         search: searchText
       });
-      console.log(response)
+      
       setDepartments(response.list);
     } catch (error) {
       console.error('获取部门列表失败:', error);
@@ -196,16 +196,8 @@ const DepartmentManagement = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      const response = await fetch(`/api/departments/${id}`, {
-        method: 'DELETE',
-      });
-      const data = await response.json();
-      if (data.success) {
-        message.success('删除成功');
-        fetchDepartments();
-      } else {
-        message.error(data.message || '删除失败');
-      }
+      await departmentService.deleteDepartment(id)
+      fetchDepartments();
     } catch (error) {
       console.error('删除部门失败:', error);
       message.error('删除部门失败');
@@ -215,28 +207,16 @@ const DepartmentManagement = () => {
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields();
-      const url = editingDepartment
-        ? `/api/departments/${editingDepartment.id}`
-        : '/api/departments';
-      const method = editingDepartment ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        message.success(editingDepartment ? '更新成功' : '创建成功');
-        setIsModalVisible(false);
-        form.resetFields();
-        fetchDepartments();
+      
+      if (editingDepartment) {
+        await departmentService.updateDepartment(editingDepartment.id, values);
       } else {
-        message.error(data.message || (editingDepartment ? '更新失败' : '创建失败'));
+        await departmentService.createDepartment(values);
       }
+      message.success(editingDepartment ? '更新成功' : '创建成功');
+      setIsModalVisible(false);
+      form.resetFields();
+      fetchDepartments();
     } catch (error) {
       console.error(editingDepartment ? '更新部门失败:' : '创建部门失败:', error);
       message.error(editingDepartment ? '更新部门失败' : '创建部门失败');
@@ -299,22 +279,13 @@ const DepartmentManagement = () => {
           layout="vertical"
         >
           <Row gutter={16}>
-            <Col span={12}>
+            <Col span={24}>
               <Form.Item
                 name="name"
                 label="部门名称"
                 rules={[{ required: true, message: '请输入部门名称' }]}
               >
                 <Input placeholder="请输入部门名称" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="code"
-                label="部门编码"
-                rules={[{ required: true, message: '请输入部门编码' }]}
-              >
-                <Input placeholder="请输入部门编码" />
               </Form.Item>
             </Col>
           </Row>
