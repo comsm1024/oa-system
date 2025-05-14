@@ -78,8 +78,7 @@ const departmentController = {
 
   async getDepartments(req, res) {
     try {
-      const { page = 1, pageSize = 10, search } = req.query;
-      const offset = (page - 1) * pageSize;
+      const { search } = req.query;
 
       const where = {};
       if (search) {
@@ -89,19 +88,23 @@ const departmentController = {
         ];
       }
 
-      const { count, rows } = await Department.findAndCountAll({
+      const { rows } = await Department.findAndCountAll({
         where,
         order: [['createdAt', 'DESC']],
-        limit: parseInt(pageSize),
-        offset: offset
       });
 
-      return res.json(response.success({
-        list: rows,
-        total: count,
-        page: parseInt(page),
-        pageSize: parseInt(pageSize)
-      }, '部门创建成功'))
+      const buildDepartmentTree = (departments, parentId = null) => {
+        return departments
+          .filter(dept => dept.parentId === parentId)
+          .map(dept => ({
+            ...dept.toJSON(),
+            children: buildDepartmentTree(departments, dept.id)
+          }))
+      };
+
+      const treeData = buildDepartmentTree(rows);
+
+      return res.json(response.success(treeData, '部门创建成功'))
     } 
     catch (error) {
       console.error('获取部门列表失败:', error);
