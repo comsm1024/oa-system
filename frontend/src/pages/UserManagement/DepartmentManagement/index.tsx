@@ -47,7 +47,6 @@ const DepartmentManagement = () => {
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [form] = Form.useForm();
   const [searchText, setSearchText] = useState('');
-  const [total, setTotal] = useState(0);
   const [searchParams, setSearchParams] = useState<DepartmentQuery>({
     page: 1,
     pageSize: 10,
@@ -63,8 +62,7 @@ const DepartmentManagement = () => {
         search: searchText
       });
       
-      setDepartments(response.list);
-      setTotal(response.total);
+      setDepartments(response);
     } catch (error) {
       console.error('获取部门列表失败:', error);
       message.error('获取部门列表失败');
@@ -84,32 +82,12 @@ const DepartmentManagement = () => {
     dept.description.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  // 构建部门树形数据
-  const buildTreeData = (departments: Department[]) => {
-    // 递归构建子树
-    const buildTree = (parentId: number | null = null): any[] => {
-      return departments
-        .filter(dept => dept.parentId === parentId)
-        .map(dept => ({
-          title: `${dept.name} (${dept.code})`,
-          value: dept.id,
-          key: dept.id,
-          disabled: editingDepartment?.id === dept.id,
-          children: buildTree(dept.id)
-        }))
-        .filter(node => node.value !== editingDepartment?.id);
-    };
-
-    // 从顶级部门开始构建
-    return buildTree(null);
-  };
-
   const columns: ColumnsType<Department> = [
     {
       title: '部门信息',
       dataIndex: 'name',
       key: 'name',
-      minWidth: 160,
+      minWidth: 180,
       render: (_, record) => (
         <Space>
           <ApartmentOutlined style={{ color: '#1890ff', fontSize: '20px' }} />
@@ -282,17 +260,10 @@ const DepartmentManagement = () => {
         tableLayout="auto"
         columns={columns}
         dataSource={filteredDepartments}
+        indentSize={30}
         rowKey="id"
         loading={loading}
-        pagination={{
-          current: searchParams.page,
-          pageSize: searchParams.pageSize,
-          total,
-          showSizeChanger: true,
-          showQuickJumper: true,
-          showTotal: (total) => `共 ${total} 条记录`,
-        }}
-        onChange={handleTableChange}
+        pagination={false}
       />
 
       <Modal
@@ -327,7 +298,8 @@ const DepartmentManagement = () => {
             label="上级部门"
           >
             <TreeSelect
-              treeData={buildTreeData(departments)}
+              treeData={departments}
+              fieldNames={{ label: 'name', value: 'id' }}
               placeholder="请选择上级部门"
               allowClear
               treeDefaultExpandAll

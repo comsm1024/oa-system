@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Children } from 'react';
 import {
   Typography,
   Table,
@@ -17,6 +17,7 @@ import {
   Divider,
   Avatar,
   Tooltip,
+  Cascader,
 } from 'antd';
 import {
   PlusOutlined,
@@ -27,10 +28,12 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { departmentService } from '../../services/departmentService';
 
 const { Title } = Typography;
 const { Option } = Select;
 const { Search } = Input;
+const { SHOW_CHILD } = Cascader;
 
 interface User {
   id: number;
@@ -201,6 +204,7 @@ const UserManagement = () => {
 
   const handleModalOk = () => {
     form.validateFields().then(values => {
+      console.log(values)
       if (editingUser) {
         // 编辑用户
         setUsers(users.map(user =>
@@ -228,12 +232,10 @@ const UserManagement = () => {
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const response = await fetch('/api/departments');
-        const data = await response.json();
-        setDepartments(data);
+        const response = await departmentService.getDepartments();
+        setDepartments(response.list);
       } catch (error) {
         console.error('获取部门列表失败:', error);
-        message.error('获取部门失败');
       }
     };
     fetchDepartments();
@@ -271,18 +273,11 @@ const UserManagement = () => {
           </Col>
           <Col xs={24} lg={8}>
             <Space.Compact style={{ width: '100%' }}>
-              <Select
-                style={{ width: '100%' }}
-                placeholder="选择部门筛选"
-                allowClear
+              <Cascader
                 size="large"
-                onChange={value => setSelectedDepartment(value)}
-                value={selectedDepartment}
-              >
-                {departments.map(dept => (
-                  <Option key={dept.id} value={dept.id}>{dept.name}</Option>
-                ))}
-              </Select>
+                fieldNames={{ label: 'name', value: 'id' }}
+                options={departments}
+              />
               <Tooltip title="重置筛选">
                 <Button
                   size="large"
@@ -360,11 +355,14 @@ const UserManagement = () => {
                 label="部门"
                 rules={[{ required: true, message: '请选择部门' }]}
               >
-                <Select placeholder="请选择部门">
-                  {departments.map(dept => (
-                    <Option key={dept} value={dept}>{dept}</Option>
-                  ))}
-                </Select>
+                <Cascader
+                  multiple
+                  placeholder="请选择部门"
+                  showCheckedStrategy={SHOW_CHILD}
+                  expandTrigger="hover"
+                  fieldNames={{ label: 'name', value: 'id' }}
+                  options={departments}
+                />
               </Form.Item>
             </Col>
             <Col span={12}>

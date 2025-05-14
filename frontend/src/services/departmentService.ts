@@ -19,7 +19,7 @@ export interface DepartmentQuery {
 export const departmentService = {
   // 获取部门列表
   getDepartments: (params?: DepartmentQuery) => {
-    return get<{list: Department[], total: number}>('/departments', params)
+    return get<Department[]>('/departments', params)
   },
   // 获取单个部门
   getDepartment: (id: number) => {
