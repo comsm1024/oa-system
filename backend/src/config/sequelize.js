@@ -10,9 +10,19 @@ const sequelize = new Sequelize({
   database: process.env.DB_NAME || 'oa_system',
   logging: false,
   timezone: '+08:00',
+  dialectOptions: {
+    dateStrings: true,
+    typeCast: true,
+    timezone: '+08:00',
+    bigNumberStrings: true,
+    supportBigNumbers: true,
+    dateStrings: ['DATETIME']
+  },
   define: {
     timestamps: true,
-    underscored: true
+    underscored: true,
+    createdAt: false,
+    updatedAt: false
   }
 });
 
