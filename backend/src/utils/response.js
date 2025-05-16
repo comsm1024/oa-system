@@ -24,8 +24,8 @@ module.exports = {
   },
   
   // 参数错误
-  badRequest: (message = '参数错误', data = null) => {
-    return createResponse({ code: 400, message, data });
+  badRequest: (message = '参数错误', code = 400, data = null) => {
+    return createResponse({ code, message, data });
   },
   
   // 未授权
