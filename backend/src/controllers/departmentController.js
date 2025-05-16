@@ -90,7 +90,7 @@ const departmentController = {
 
       const { rows } = await Department.findAndCountAll({
         where,
-        order: [['createdAt', 'DESC']],
+        order: [['created_at', 'DESC']],
       });
 
       const buildDepartmentTree = (departments, parentId = null) => {
@@ -104,7 +104,7 @@ const departmentController = {
 
       const treeData = buildDepartmentTree(rows);
 
-      return res.json(response.success(treeData, '部门创建成功'))
+      return res.json(response.success(treeData, '获取部门列表成功'))
     } 
     catch (error) {
       console.error('获取部门列表失败:', error);
