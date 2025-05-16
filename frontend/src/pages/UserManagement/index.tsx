@@ -1,4 +1,4 @@
-import { useState, useEffect, Children } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Typography,
   Table,
@@ -28,58 +28,30 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import { departmentService } from '../../services/departmentService';
+import { userService, User  } from '../../services/userService';
+import { departmentService} from '../../services/departmentService';
 
 const { Title } = Typography;
 const { Option } = Select;
 const { Search } = Input;
 const { SHOW_CHILD } = Cascader;
 
-interface User {
-  id: number;
-  username: string;
-  name: string;
-  email: string;
-  department: string;
-  role: string;
-  status: 'active' | 'inactive';
-}
-
 const UserManagement = () => {
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: 1,
-      username: 'zhangsan',
-      name: '张三',
-      email: 'zhangsan@example.com',
-      department: '技术部',
-      role: 'admin',
-      status: 'active',
-    },
-    {
-      id: 2,
-      username: 'lisi',
-      name: '李四',
-      email: 'lisi@example.com',
-      department: '人事部',
-      role: 'user',
-      status: 'active',
-    },
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
 
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+  const [selectedDepartment, setSelectedDepartment] = useState<[]>([]);
 
   const filteredUsers = users.filter(user => {
     const matchSearch = (
-      user.name.toLowerCase().includes(searchText.toLowerCase()) ||
       user.username.toLowerCase().includes(searchText.toLowerCase()) ||
       user.email.toLowerCase().includes(searchText.toLowerCase())
     );
-    const matchDepartment = !selectedDepartment || user.department === selectedDepartment;
+    const matchDepartment = !selectedDepartment || selectedDepartment.every(i => user.department.includes(i));
     return matchSearch && matchDepartment;
   });
 
@@ -92,7 +64,7 @@ const UserManagement = () => {
         <Space>
           <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
           <div>
-            <div style={{ fontWeight: 500 }}>{record.name}</div>
+            <div style={{ fontWeight: 500 }}>{record.fullName}</div>
             <div style={{ fontSize: '12px', color: '#666' }}>{record.username}</div>
           </div>
         </Space>
@@ -192,6 +164,7 @@ const UserManagement = () => {
   };
 
   const handleEdit = (user: User) => {
+    console.log(user)
     setEditingUser(user);
     form.setFieldsValue(user);
     setIsModalVisible(true);
@@ -203,25 +176,40 @@ const UserManagement = () => {
   };
 
   const handleModalOk = () => {
-    form.validateFields().then(values => {
+    form.validateFields().then(async (values) => {
       console.log(values)
       if (editingUser) {
         // 编辑用户
-        setUsers(users.map(user =>
-          user.id === editingUser.id ? { ...values, id: editingUser.id } : user
-        ));
-        message.success('更新成功');
+        try {
+          const response = await userService.updateUser(editingUser.id, values)
+          console.log(response)
+          setUsers(users.map(user =>
+            user.id === editingUser.id ? { ...values, id: editingUser.id } : user
+          ));
+          message.success('更新成功');  
+          setIsModalVisible(false);
+        } catch (error) {
+          console.log(error)
+        }
       } else {
         // 添加用户
         const newUser = {
           ...values,
-          id: Math.max(...users.map(u => u.id)) + 1,
           status: 'active',
         };
-        setUsers([...users, newUser]);
-        message.success('添加成功');
+        try {
+          const response = await userService.createUser(newUser)
+          setUsers([...users, response]);
+          message.success('添加成功');
+          setIsModalVisible(false);
+        } catch (error) {
+          if (error instanceof Error) {
+            message.error(error.message);
+          } else {
+            message.error('发生未知错误');
+          }
+        }
       }
-      setIsModalVisible(false);
     });
   };
 
@@ -233,13 +221,29 @@ const UserManagement = () => {
     const fetchDepartments = async () => {
       try {
         const response = await departmentService.getDepartments();
-        setDepartments(response.list);
+        setDepartments(response);
       } catch (error) {
         console.error('获取部门列表失败:', error);
       }
     };
     fetchDepartments();
   }, []);
+
+  const fetchUserList = async () => {
+    setLoading(true);
+    try {
+      const response = await userService.getUserList()
+      setUsers(response.list)
+    } catch (error) {
+      // 错误已在请求拦截器中处理
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchUserList()
+  }, [searchText])
 
   const roles = ['admin', 'manager', 'user'];
 
@@ -284,7 +288,7 @@ const UserManagement = () => {
                   icon={<ReloadOutlined />}
                   onClick={() => {
                     setSearchText('');
-                    setSelectedDepartment('');
+                    setSelectedDepartment([]);
                   }}
                 />
               </Tooltip>
@@ -297,6 +301,7 @@ const UserManagement = () => {
         columns={columns}
         dataSource={filteredUsers}
         rowKey="id"
+        loading={loading}
         pagination={{
           showSizeChanger: true,
           showQuickJumper: true,
@@ -330,9 +335,9 @@ const UserManagement = () => {
             </Col>
             <Col span={12}>
               <Form.Item
-                name="name"
+                name="fullName"
                 label="姓名"
-                rules={[{ required: true, message: '请输入姓名' }]}
+                rules={[{ required: false, message: '请输入姓名' }]}
               >
                 <Input placeholder="请输入姓名" />
               </Form.Item>
@@ -351,7 +356,7 @@ const UserManagement = () => {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
-                name="department"
+                name="departments"
                 label="部门"
                 rules={[{ required: true, message: '请选择部门' }]}
               >

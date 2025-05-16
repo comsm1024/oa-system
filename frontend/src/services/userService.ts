@@ -4,8 +4,10 @@ import { get, post, put, del } from './request';
 export interface User {
   id: number;
   username: string;
+  fullName: string;
   email: string;
   role: string;
+  department: number[];
   createdAt: string;
   updatedAt: string;
 }
@@ -34,21 +36,21 @@ export const userService = {
 
   // 获取用户列表
   getUserList: (params?: { page: number; pageSize: number }) => {
-    return get<User[]>('/user/list', params);
+    return get<{list: User[]; page: number; pagesSize: number; total: number}>('/users', params);
   },
 
   // 创建用户
   createUser: (data: Omit<User, 'id' | 'createdAt' | 'updatedAt'>) => {
-    return post<User>('/user/create', data);
+    return post<User>('/users', data);
   },
 
   // 更新用户
   updateUser: (id: number, data: Partial<User>) => {
-    return put<User>(`/user/${id}`, data);
+    return put<User>(`/users/${id}`, data);
   },
 
   // 删除用户
   deleteUser: (id: number) => {
-    return del<void>(`/user/${id}`);
+    return del<void>(`/users/${id}`);
   },
 }; 
